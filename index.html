@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Scam Teams</title>
+    <meta charset="UTF-8">
+    <script src="lib/twitch.js"></script>
+    <script src="lib/underscore-min.js"></script>
+
+    <script>
+        const { Chat } = window.TwitchJs;
+        let clientId = 'itiucpl208iwqzl4pfg4hrtcp8l70k';
+        var client;
+
+        let appStateData = localStorage.getItem("appstateteams");
+        let appState = appStateData ? JSON.parse(appStateData) :  {
+        };
+
+        function parseQuestions(input) {
+            return input.split("\n").map(line => {
+                let parts = line.split("#");
+                let options = parts[1].split("|").map(opt => {
+                    let parts = opt.split("-");
+                    let rank = parts[1].split(",").map(x => Number(x.trim()))
+                    return {
+                        value: parts[0].trim(),
+                        rank: rank
+                    }
+                })
+                return {
+                    question: parts[0].trim(),
+                    options: options
+                }
+            });
+        }
+
+        function splitIntoTeams(choices, n) {
+            teams = [];
+            teamSize = choices.length / n;
+            reminder = choices.length % n;
+
+            for (let i = 0; i < n - 1; i++) {
+                let sorted = _.sortBy(choices, x => -x.choice[i]);
+                let index = teamSize + (i < reminder ? 1 : 0);
+                let cut = sorted.slice(0, index);
+                teams[i] = cut;
+                choices = choices.slice(index)
+            }
+
+            teams[n - 1] = choices;
+            return teams;
+        }
+
+        function addAnswer(user, questions, questionIndex, option, answers) {
+            answers[user] = answers[user] || {
+                user: user,
+                choice: [],
+                questions: {}
+            };
+
+            if (answers[user].questions[questionIndex]) {
+                // already answered
+                return false;
+            }
+
+            let question = questions[questionIndex];
+            let opt = _.find(question.options, o => o.value.startsWith(option));
+
+            if (opt) {
+                answers[user].questions[questionIndex] = true;
+                answers[user].choice = opt.rank.map(function (num, idx) {
+                    return num + (idx < answers[user].choice.length ? answers[user].choice[idx] : 0);
+                });
+                return true;
+            }
+            return false;
+        }
+    
+
+        function saveAppState(appState) {
+            localStorage.setItem("appstateteams", JSON.stringify(appState));
+        }
+
+        function save(key, apKey) {
+            var value = document.getElementById(key).value;
+            appState[apKey] = value;
+            saveAppState(appState);
+        }
+
+        function saveNumber(key, apKey) {
+            var value = document.getElementById(key).value;
+            appState[apKey] = Number(value);
+            saveAppState(appState);
+        }
+
+        function saveChecked(key, apKey) {
+            var value = document.getElementById(key).checked;
+            appState[apKey] = value;
+            saveAppState(appState);
+        }
+        function connectToChannel() {
+            if (client) {
+                client.disconnect();
+            }
+
+            var config = {
+                clientId
+            };
+
+            let botInput = document.getElementById("botInput").value;
+            let channelName = document.getElementById("channelNameInput").value;
+            document.getElementById("twitchChat").innerHTML = '';
+    
+            if (botInput) {
+                var parts = botInput.split("#");
+
+                config.username = parts[0];
+                config.token = parts[1];
+            }
+    
+            client = new Chat(config);
+
+            let teamInput = document.getElementById("teamsInput").value;
+            let questionInput = document.getElementById("questionsInput").value;
+
+            let answers = {};
+
+            let questions = parseQuestions(questionInput);
+            let teams = teamInput.split(",").map(x => x.trim());
+            let teamNumber = teams.length;
+
+            let currentQuestion = -1;
+
+            function addMessage(user, channel, msg, valid, displayname, color, system) {
+                const app = document.getElementById("twitchChat");
+
+                let at_bottom = (app.scrollHeight - app.scrollTop - 560) < 44;
+                let div = document.createElement("div");
+                let channelInfo = channel && (channel !== appState.channel) ? ("(" + channel + ") ") : "";
+                div.innerHTML = `${channelInfo}<strong><span style="${color ? ('color: ' + color) : ''}">${displayname ? displayname : user}</span>:</strong> ${msg}`;
+                div.style.cursor = 'pointer';
+                div.className = valid ? 'valid' : 'invalid';
+                if (system) {
+                    div.className += " system";
+                }
+                div.onclick = () => {
+                    checkPlayerName(user);
+                    document.getElementById("checkPlayerContainer").scrollIntoView();
+                }
+                app.appendChild(div);
+                if (at_bottom) {
+                    app.scrollTop = app.scrollHeight;  
+                }
+            }
+
+            const run = async () => {
+                client.on("*", (message) => {
+                    const time = new Date(message.timestamp).toTimeString();
+                    const event = message.event || message.command;
+                    const channel = message.channel ? message.channel.substr(1) : undefined;
+                    let msg = message.message || "";
+
+                    if (!message.tags.username || !msg) {
+                        return;
+                    }
+                    
+                    if (msg === '!teamsnext' && (message.tags.mod || message.tags.badges.broadcaster)) {
+                        currentQuestion++;
+                        if (currentQuestion >= questions.length) {
+                            return
+                        }
+                        // post next question
+                        let chatmsg = questions[currentQuestion].question;
+                        let optionString = " " + questions[currentQuestion].options.map(o => o.value).join(" - ");
+                        addMessage(parts[0], undefined, chatmsg + optionString);
+                        client.say(channelName, chatmsg + optionString);
+                    }
+                    if (msg === '!teams' && (message.tags.mod || message.tags.badges.broadcaster)) {
+                        let finalAnswers = _.values(answers);
+                        let groups = splitIntoTeams(finalAnswers, teamNumber);
+                        groups.forEach((team, index) => {
+                            let chatmsg = teams[index] + ": " + groups[index].map(u => u.user).join(", ");
+                            addMessage(parts[0], undefined, chatmsg);
+                            client.say(channelName, undefined, chatmsg);
+                        });
+                    }
+
+                    if (currentQuestion < 0 || currentQuestion >= questions.length) {
+                        return;
+                    }
+
+                    let vote = msg.toLowerCase();
+                    let validMessage = addAnswer(message.tags.displayName, questions, currentQuestion, vote, answers);
+                    addMessage(message.tags.username, channel, vote, validMessage, message.tags.displayName, message.tags.color);
+                });
+
+                await client.connect();
+                await client.join(channelName);
+
+                addMessage(parts[0], undefined,  channelName + ' Connected');
+            };
+
+            run();
+        }
+    </script>
+    <link href="lib/app.css" rel="stylesheet"/>
+</head>
+<body>
+<div>
+    <h1>Scam Teams 2000</h1>
+    </br></br></br>
+</div>
+<div>
+    <label for="teamsInput">Teams:</label>
+    <input id="teamsInput" name="teamsInput" onblur="save('teamsInput', 'teams')" size="50">
+    <br/><br/>
+    <label for="questionsInput">Questions:</label><br>
+    <textarea id="questionsInput" name="questionsInput" onblur="save('questionsInput', 'questions')" rows="30" cols="150"></textarea>
+    <br/><br/>
+    <label for="botInput">BotCredentials (Optional):</label><br/>
+    <input type="text" id="botInput" name="botInput" onblur="save('botInput', 'bot')" size="50">
+    <br/><br/>
+    <label for="channelNameInput">Channelname:</label>
+    <input type="text" id="channelNameInput" name="channelNameInput" onblur="save('channelNameInput', 'channel')">
+    <button onclick="connectToChannel()">Connect</button>
+</div>
+<br>
+
+<div id="twitchChat"></div>
+
+<script>
+    document.getElementById("teamsInput").value = appState.teams;
+    document.getElementById("botInput").value = appState.bot;
+    document.getElementById("questionsInput").value = appState.questions;
+    document.getElementById("channelNameInput").value = appState.channel;
+
+    let dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.querySelector("body").className = dark ? "dark" : "";
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+#twitchChat {
+    max-height: 600px;
+    overflow: scroll;
+    padding: 0 5px;
+    margin-top: 10px;
+}
+#twitchChat > div {
+    padding: 1px 10px;
+}
+body.dark {
+    background-color: #282828;
+    color: #c6c6c6;
+}
+.valid {
+    background-color: #0a4d04;
+}
