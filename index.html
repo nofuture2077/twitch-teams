@@ -130,6 +130,8 @@
 
             let currentQuestion = -1;
 
+            let finalTeams = undefined;
+
             function addMessage(user, channel, msg, valid, displayname, color, system) {
                 const app = document.getElementById("twitchChat");
 
@@ -163,7 +165,7 @@
                         return;
                     }
                     
-                    if (msg === '!teamsnext' && (message.tags.mod || message.tags.badges.broadcaster)) {
+                    if (!finalTeams && msg === '!teamsnext' && (message.tags.mod || message.tags.badges.broadcaster)) {
                         currentQuestion++;
                         if (currentQuestion >= questions.length) {
                             return
@@ -175,16 +177,30 @@
                         client.say(channelName, chatmsg + optionString);
                     }
                     if (msg === '!teams' && (message.tags.mod || message.tags.badges.broadcaster)) {
-                        let finalAnswers = _.values(answers);
-                        let groups = splitIntoTeams(finalAnswers, teamNumber);
-                        groups.forEach((team, index) => {
-                            let chatmsg = teams[index] + ": " + groups[index].map(u => u.user).join(", ");
+                        if (!finalTeams) {
+                            let finalAnswers = _.values(answers);
+                            finalTeams = splitIntoTeams(finalAnswers, teamNumber);
+                        }
+                        finalTeams.forEach((team, index) => {
+                            let chatmsg = teams[index] + ": " + finalTeams[index].map(u => u.user).join(", ");
                             addMessage(parts[0], undefined, chatmsg);
-                            client.say(channelName, undefined, chatmsg);
+                            client.say(channelName, chatmsg);
                         });
                     }
 
-                    if (currentQuestion < 0 || currentQuestion >= questions.length) {
+                    if (msg === "!team" && finalTeams) {
+                        finalTeams.forEach((team, index) => {
+                            let hit = finalTeams[index].find(u => u.user === message.tags.displayName);
+                            if (hit) {
+                                let chatmsg =  message.tags.displayName + ": " + teams[index];
+                                addMessage(parts[0], undefined, chatmsg);
+                                client.say(channelName, chatmsg);
+                            }
+                            
+                        });
+                    }
+
+                    if (finalTeams || currentQuestion < 0 || currentQuestion >= questions.length) {
                         return;
                     }
 
