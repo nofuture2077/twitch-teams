@@ -191,7 +191,7 @@
                         return;
                     }
                     
-                    if (!finalTeams && msg === '!teamsnext' && (message.tags.mod || message.tags.badges.broadcaster)) {
+                    if (msg === '!teamsnext' && (message.tags.mod || message.tags.badges.broadcaster)) {
                         currentQuestion++;
                         if (currentQuestion >= questions.length) {
                             return
@@ -201,6 +201,7 @@
                         let optionString = " " + questions[currentQuestion].options.map(o => o.value).join(" - ");
                         addMessage(parts[0], undefined, chatmsg + optionString);
                         client.say(channelName, chatmsg + optionString);
+                        return;
                     }
                     if (finalTeams && msg.startsWith('!teamsadd') && (message.tags.mod || message.tags.badges.broadcaster)) {
                         let parts = msg.split(" ");
@@ -216,8 +217,8 @@
                                 addMessage(parts[0], undefined, chatmsg);
                                 client.say(channelName, chatmsg);
                             }
-                            
                         }
+                        return;
                     }
                     if (finalTeams && msg.startsWith('!teamsremove') && (message.tags.mod || message.tags.badges.broadcaster)) {
                         let parts = msg.split(" ");
@@ -225,6 +226,7 @@
                             let userName = parts[1];
                             finalTeams = finalTeams.map(t => t.filter(x => x.user !== userName));
                         }
+                        return;
                     }
                     if (msg === '!teams' && (message.tags.mod || message.tags.badges.broadcaster)) {
                         if (!finalTeams) {
@@ -236,6 +238,7 @@
                             addMessage(parts[0], undefined, chatmsg);
                             client.say(channelName, chatmsg);
                         });
+                        return;
                     }
 
                     if ((msg === "!team" || msg === "!haus") && finalTeams) {
@@ -247,6 +250,7 @@
                                 client.say(channelName, chatmsg);
                             }
                         });
+                        return;
                     }
 
                     if (finalTeams || currentQuestion < 0 || currentQuestion >= questions.length) {
