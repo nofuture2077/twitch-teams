@@ -5,8 +5,25 @@
     <meta charset="UTF-8">
     <script src="lib/twitch.js"></script>
     <script src="lib/underscore-min.js"></script>
-
+    <script src="lib/lz-string.js"></script>
     <script>
+        function getQueryVariable(query, variable) {
+            var vars = query.split('&');
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split('=');
+                if (decodeURIComponent(pair[0]) == variable) {
+                    return decodeURIComponent(pair[1]);
+                }
+            }
+            console.log('Query variable %s not found', variable);
+        }
+
+        if (window.location.search.includes('as')) {
+            var query = window.location.search.substring(1);
+            let queryData = getQueryVariable(query, 'as');
+            localStorage.setItem("appstateteams", LZString.decompressFromEncodedURIComponent(queryData));
+        }
+
         const { Chat } = window.TwitchJs;
         let clientId = 'itiucpl208iwqzl4pfg4hrtcp8l70k';
         var client;
@@ -48,6 +65,15 @@
 
             teams[n - 1] = choices;
             return teams;
+        }
+
+        function shareManagement() {
+            let link = window.location.origin + window.location.pathname + "?as=" + LZString.compressToEncodedURIComponent(JSON.stringify(appState));
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Link copied to Clipboard");
+            }, () => {
+                console.log(link);
+            });
         }
 
         function addAnswer(user, questions, questionIndex, option, answers) {
@@ -176,6 +202,30 @@
                         addMessage(parts[0], undefined, chatmsg + optionString);
                         client.say(channelName, chatmsg + optionString);
                     }
+                    if (finalTeams && msg.startsWith('!teamsadd') && (message.tags.mod || message.tags.badges.broadcaster)) {
+                        let parts = msg.split(" ");
+                        if (parts.length === 3) {
+                            let userName = parts[1];
+                            let teamN = parts[2];
+                            let teamIndex = Number(teamN) - 1
+                            if (teamIndex >= 0 && teamIndex < finalTeams.length) {
+                                // add to team
+                                finalTeams[teamIndex] = finalTeams[teamIndex].concat({user: userName});
+
+                                let chatmsg = userName + ": " +  teams[teamIndex];
+                                addMessage(parts[0], undefined, chatmsg);
+                                client.say(channelName, chatmsg);
+                            }
+                            
+                        }
+                    }
+                    if (finalTeams && msg.startsWith('!teamsremove') && (message.tags.mod || message.tags.badges.broadcaster)) {
+                        let parts = msg.split(" ");
+                        if (parts.length === 2) {
+                            let userName = parts[1];
+                            finalTeams = finalTeams.map(t => t.filter(x => x.user !== userName));
+                        }
+                    }
                     if (msg === '!teams' && (message.tags.mod || message.tags.badges.broadcaster)) {
                         if (!finalTeams) {
                             let finalAnswers = _.values(answers);
@@ -228,10 +278,14 @@
         <li>!teamsnext to start / move to next question</li>
         <li>!teams to build teams at the end</li>
         <li>Chatters can use !team afterwards to view their team</li>
+        <li>!teamsadd Z1N5 2 -  add the the user to the second team</li>
+        <li>!teamsaremove Z1N5 - remove the user from all teams</li>
     </ol>
     </br></br></br>
 </div>
 <div>
+    <button onClick="shareManagement()" class="tc fw8 bg-white black pa3 ba bw1 b--black mb2">New GM</button>
+    <br><br>
     <label for="teamsInput">Teams:</label>
     <input id="teamsInput" name="teamsInput" onblur="save('teamsInput', 'teams')" size="50">
     <br/><br/>
