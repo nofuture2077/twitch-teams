@@ -179,6 +179,10 @@
                 }
             }
 
+            function chunks(array, chunk_size) {
+                return Array(Math.ceil(array.length / chunk_size)).fill().map((_, index) => index * chunk_size).map(begin => array.slice(begin, begin + chunk_size));
+            }
+
             const run = async () => {
                 client.on("*", (message) => {
                     const time = new Date(message.timestamp).toTimeString();
@@ -197,7 +201,7 @@
                         }
                         // post next question
                         let chatmsg = "WEEWOO " + questions[currentQuestion].question;
-                        let optionString = " " + questions[currentQuestion].options.map(o => o.value).join(" - ");
+                        let optionString = " " + questions[currentQuestion].options.map(o => o.value).join(" - ") + " WEEWOO";
                         addMessage(parts[0], undefined, chatmsg + optionString);
                         client.say(channelName, chatmsg + optionString);
                         return;
@@ -233,9 +237,13 @@
                             finalTeams = splitIntoTeams(finalAnswers, teamNumber);
                         }
                         finalTeams.forEach((team, index) => {
-                            let chatmsg = teams[index] + ": " + finalTeams[index].map(u => u.user).join(", ");
-                            addMessage(parts[0], undefined, chatmsg);
-                            client.say(channelName, chatmsg);
+                            let users = finalTeams[index].map(u => u.user);
+                            let userChunks = chunks(users, 20);
+                            for (let i in userChunks) {
+                                let chatmsg = teams[index] + ": " + userChunks[i].join(", ");
+                                addMessage(parts[0], undefined, chatmsg);
+                                client.say(channelName, chatmsg);
+                            }
                         });
                         return;
                     }
