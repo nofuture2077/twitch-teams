@@ -55,15 +55,14 @@
             teamSize = choices.length / n;
             reminder = choices.length % n;
 
-            for (let i = 0; i < n - 1; i++) {
+            for (let i = 0; i < n; i++) {
                 let sorted = _.sortBy(choices, x => -x.choice[i]);
                 let index = teamSize + (i < reminder ? 1 : 0);
                 let cut = sorted.slice(0, index);
                 teams[i] = cut;
-                choices = choices.slice(index)
+                choices = sorted.slice(index)
             }
 
-            teams[n - 1] = choices;
             return teams;
         }
 
