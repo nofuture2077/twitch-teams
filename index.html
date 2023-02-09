@@ -238,7 +238,7 @@
                         });
                     }
 
-                    if (msg === "!team" && finalTeams) {
+                    if ((msg === "!team" || msg === "!haus") && finalTeams) {
                         finalTeams.forEach((team, index) => {
                             let hit = finalTeams[index].find(u => u.user === message.tags.displayName);
                             if (hit) {
@@ -246,7 +246,6 @@
                                 addMessage(parts[0], undefined, chatmsg);
                                 client.say(channelName, chatmsg);
                             }
-                            
                         });
                     }
 
@@ -277,7 +276,7 @@
         <li>Enter channelId and connect</li>
         <li>!teamsnext to start / move to next question</li>
         <li>!teams to build teams at the end</li>
-        <li>Chatters can use !team afterwards to view their team</li>
+        <li>Chatters can use !team or !haus afterwards to view their team</li>
         <li>!teamsadd Z1N5 2 -  add the the user to the second team</li>
         <li>!teamsremove Z1N5 - remove the user from all teams</li>
     </ol>
