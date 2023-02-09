@@ -196,7 +196,7 @@
                             return
                         }
                         // post next question
-                        let chatmsg = questions[currentQuestion].question;
+                        let chatmsg = "WEEWOO " + questions[currentQuestion].question;
                         let optionString = " " + questions[currentQuestion].options.map(o => o.value).join(" - ");
                         addMessage(parts[0], undefined, chatmsg + optionString);
                         client.say(channelName, chatmsg + optionString);
