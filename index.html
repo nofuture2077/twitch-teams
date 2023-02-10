@@ -250,7 +250,7 @@
 
                     if ((msg === "!team" || msg === "!haus") && finalTeams) {
                         finalTeams.forEach((team, index) => {
-                            let hit = finalTeams[index].find(u => u.user === message.tags.displayName);
+                            let hit = finalTeams[index].find(u => u.user.toLowerCase() === message.tags.displayName.toLowerCase());
                             if (hit) {
                                 let chatmsg =  message.tags.displayName + ": " + teams[index];
                                 addMessage(parts[0], undefined, chatmsg);
@@ -260,7 +260,7 @@
                         return;
                     }
 
-                    if (finalTeams || currentQuestion < 0 || currentQuestion >= questions.length) {
+                    if (finalTeams || currentQuestion < 0 || currentQuestion >= questions.length || msg.length > 2) {
                         return;
                     }
 
